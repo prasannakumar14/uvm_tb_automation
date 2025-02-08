@@ -366,5 +366,10 @@ def main():
 
     create_run_file()
 
+    print("")
+
+    print("🛠️ UVM TB Built! & live! Now, let's find those sneaky bugs before they find us! 🕵️‍♂️🔍")
+
+
 if __name__ == "__main__":
     main()
