@@ -324,7 +324,13 @@ def get_agent_type():
             print("Invalid input! Please enter 'active' or 'passive'.")
 
 def main():
-    
+    RED = "\033[91m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    BLUE = "\033[94m"
+    BOLD = "\033[1m"
+    RESET = "\033[0m"  # Reset to default color
+
     project_name = get_project_name()
     
     create_project_directory(project_name)
@@ -366,10 +372,20 @@ def main():
 
     create_run_file()
 
-    print("")
+    print()
 
-    print("🛠️ UVM TB Built! & live! Now, let's find those sneaky bugs before they find us! 🕵️‍♂️🔍")
+    print(f"{RED}{BOLD}                         🎯 BOOM!               {RESET}")
 
+    print()
 
+    print(f"{YELLOW}{BOLD}🛠️  UVM TB Built! & live! Now, {BLUE}let's find those sneaky bugs before they find us! 🕵️‍♂️ 🔍{RESET}")
+
+    print()
+
+    print(f"{RED}{BOLD}                         🎯 BOOM!               {RESET}")
+
+    print()
+
+    
 if __name__ == "__main__":
     main()
