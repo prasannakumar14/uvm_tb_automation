@@ -124,6 +124,15 @@ def create_test_file(project_name):
                 f"  {project_name}_env envh;\n"
                 f"{calling_component_function_new(project_name,'test')}"
                 f"{calling_component_build_phase('test',project_name)}"
+                f"\nendclass\n")
+        
+        f.write(f"class test1 extends {project_name}_test;\n"
+                f"  `uvm_component_utils(test1)\n"
+                f"\n"
+                f"  seq1 seqh1;\n"
+                f"\n"
+                f"{calling_component_function_new('test1')}"
+                f"{calling_component_run_phase("",'test')}"
                 f"\nendclass")
         
 def create_sequence_file(project_name): 
@@ -131,7 +140,8 @@ def create_sequence_file(project_name):
         f.write(f"class {project_name}_sequence extends uvm_sequence #({project_name}_xtn);\n"
                 f"  `uvm_object_utils({project_name}_sequence)\n"
                 f"{calling_object_function_new(project_name,'sequence')}"
-                f"\nendclass")
+                f"\nendclass\n")
+        
         f.write(f"\n"
                 f"class seq1 extends {project_name}_sequence);\n"
                 f"  `uvm_object_utils(seq1)\n"
@@ -161,7 +171,7 @@ def create_tb_file():
                     f"\n"
                     f"  initial begin\n"
                     f"    uvm_config_db#(virtual intf)::set(null, \"*\", \"intf\", vif);\n"
-                    f"    run_test(\" \");\n"
+                    f"    run_test(\"test1\");\n"
                     f"\n"
                     f"    #100\n"
                     f"    $finish();\n"
@@ -227,14 +237,20 @@ def create_run_file():
         f.write(f" #write your commands here\n")
 
 
-def calling_component_function_new(project_name,component_name):
-    return (f"\n"
+def calling_component_function_new(project_name,component_name=None):
+    if(component_name == None):
+        return (f"\n"
+            f"  function new(string name = \"{project_name}\", uvm_component parent);\n"
+            f"     super.new(name,parent);\n"
+            f"  endfunction\n")
+    else:
+        return (f"\n"
             f"  function new(string name = \"{project_name}_{component_name}\", uvm_component parent);\n"
             f"     super.new(name,parent);\n"
             f"  endfunction\n")
 
 
-def calling_object_function_new(project_name,object_name):
+def calling_object_function_new(project_name,object_name=None):
     if(object_name == None):
         return (f"\n"
             f"  function new(string name = \"{project_name}\");\n"
@@ -313,6 +329,16 @@ def calling_component_run_phase(project_name=None,component_name=None):
                 f"  task run_phase(uvm_phase phase);\n"
                 f"     forever()\n"
                 f"       collect_data();  //Create your collect_data function\n"
+                f"  endtask\n")
+    elif (component_name == "test"):
+        return (f"\n"
+                f"  task run_phase(uvm_phase phase);\n"
+                f"     seqh1=seq1::type_id::create(\"seqh1\");\n"
+                f"\n"
+                f"     phase.raise_objection(this);\n"
+                f"       seqh1.start();\n"
+                f"     phase.drop_objection(this);\n"
+                f"\n"
                 f"  endtask\n")
 
 
@@ -396,15 +422,15 @@ def main():
 
     print()
 
-    print("                          BOOM!               ")
+    print(f"{RED}{BOLD}                          BOOM!               {RESET}")
 
     print()
 
-    print("  UVM TB Built! & live! Now, let's find those sneaky bugs before they find us! ")
+    print(f"{YELLOW}{BOLD}🛠️  UVM TB Built! & live! Now, {MAGENTA}let's find those sneaky bugs before they find us! {RESET}")
 
     print()
 
-    print("                          BOOM!               ")
+    print(f"{RED}{BOLD}                          BOOM!               {RESET}")
 
     print()
 
