@@ -132,6 +132,18 @@ def create_sequence_file(project_name):
                 f"  `uvm_object_utils({project_name}_sequence)\n"
                 f"{calling_object_function_new(project_name,'sequence')}"
                 f"\nendclass")
+        f.write(f"class seq1 extends {project_name}_sequence);\n"
+                f"  `uvm_object_utils(seq1)\n"
+                f"{calling_object_function_new("seq1")}"
+                f"\n"
+                f"  task body();\n"
+                f"    repeat(10) begin\n"
+                f"      req = {project_name}_xtn::type_id::create(\"req\");\n"
+                f"      start_item(req);\n"
+                f"        req.randomize();\n"
+                f"      finish_item(req);\n"
+                f"  endtask\n"
+                f"\nendclass")
 
 
 def create_tb_file():
@@ -222,7 +234,13 @@ def calling_component_function_new(project_name,component_name):
 
 
 def calling_object_function_new(project_name,object_name):
-    return (f"\n"
+    if(object_name == None):
+        return (f"\n"
+            f"  function new(string name = \"{project_name}\");\n"
+            f"     super.new(name);\n"
+            f"  endfunction\n")
+    else:
+        return (f"\n"
             f"  function new(string name = \"{project_name}_{object_name}\");\n"
             f"     super.new(name);\n"
             f"  endfunction\n")
