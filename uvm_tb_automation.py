@@ -9,9 +9,9 @@ def create_design_directory():
     os.makedirs("design", exist_ok=True)
     os.chdir("design")
 
-def create_rtl_fiie():
+def create_rtl_fiie(project_name):
     with open("rtl.v", "w") as f:
-      f.write("module rtl();\nendmodule\n")
+      f.write(f"module {project_name}();\nendmodule\n")
 
 def create_verification_directory():
     os.makedirs("tb", exist_ok=True)
@@ -33,7 +33,6 @@ def create_transaction_file(project_name):
 
     with open("xtn.sv", "w") as f:
         f.write(f"class {project_name}_xtn extends uvm_sequence_item;\n"
-                f"  `uvm_object_utils({project_name}_xtn)\n"
                 f"\n")
         
         for var_name in variables:
@@ -61,7 +60,7 @@ def create_agent_file(project_name,agent_type):
                 f.write(f"\n"
                         f"  {project_name}_driver drvh;\n"
                         f"  {project_name}_monitor monh;\n"
-                        f"  {project_name}_sequencer sqrh;\n")
+                        f"  {project_name}_sequencer seqrh;\n")
         elif agent_type == "passive":
                 f.write(f"\n"
                         f"  {project_name}_monitor monh;\n")
@@ -143,7 +142,7 @@ def create_sequence_file(project_name):
                 f"\nendclass\n")
         
         f.write(f"\n"
-                f"class seq1 extends {project_name}_sequence);\n"
+                f"class seq1 extends {project_name}_sequence;\n"
                 f"  `uvm_object_utils(seq1)\n"
                 f"{calling_object_function_new("seq1")}"
                 f"\n"
@@ -154,24 +153,31 @@ def create_sequence_file(project_name):
                 f"      start_item(req);\n"
                 f"        req.randomize();\n"
                 f"      finish_item(req);\n"
+                f"    end\n"
                 f"  endtask\n"
                 f"\nendclass")
 
 
-def create_tb_file():
-        with open("tb.sv", "w") as f:
+def create_tb_file(project_name,variables_names):
+        with open("top.sv", "w") as f:
             f.write(f"`include \"pkg.sv\"\n"
                     f"`include \"intf.sv\"\n"
+                    f"`include \"../design/{project_name}.v\"\n"
                     f"\n"
-                    f"module tb();\n"
+                    f"module top();\n"
+                    f"  import pkg::*;"
+                    f"  import uvm_pkg::*;"
+                    f"\n"
                     f"  bit clk;\n"
                     f"\n"
                     f"  always #5 clk = ~clk;\n"
                     f"\n"
                     f"  intf vif(clk);\n"
                     f"\n"
+                    f" {project_name} dut(.clk(clk),.)\n"
+                    f"\n"
                     f"  initial begin\n"
-                    f"    uvm_config_db#(virtual intf)::set(null, \"*\", \"intf\", vif);\n"
+                    f"    uvm_config_db #(virtual intf)::set(null, \"*\", \"intf\", vif);\n"
                     f"    run_test(\"test1\");\n"
                     f"\n"
                     f"    #100\n"
@@ -235,7 +241,10 @@ def create_package_file(agent_type):
 
 def create_run_file():
     with open("run.do", "w") as f:
-        f.write(f" #write your commands here\n")
+        f.write(f"vlog top.sv \n"
+                f"vsim -novopt -suppress 12110 top\n"
+                f"add wave -position insertpoint sim:/top/vif/*\n"
+                f"run -all\n")
 
 
 def calling_component_function_new(project_name,component_name=None):
@@ -271,7 +280,7 @@ def calling_component_build_phase(class_name,project_name=None, agent_type=None)
         f"     super.build_phase(phase);\n"
     )
 
-    if class_name in ["driver", "monitor", "agent"]:
+    if class_name in ["driver", "monitor"]:
         build_phase_code += (
             f"\n"
             f"     if (!uvm_config_db#(virtual intf)::get(this, \"\", \"intf\", vif))\n"
@@ -287,7 +296,7 @@ def calling_component_build_phase(class_name,project_name=None, agent_type=None)
     if agent_type == "active":
         build_phase_code += (
             f"     drvh={project_name}_driver::type_id::create(\"drvh\",this);\n"
-            f"     sqrh={project_name}_sequencer::type_id::create(\"sqrh\",this);\n"
+            f"     seqrh={project_name}_sequencer::type_id::create(\"seqrh\",this);\n"
         )
 
     if class_name in ["env"]:
@@ -328,7 +337,7 @@ def calling_component_run_phase(project_name=None,component_name=None):
     elif (component_name == "monitor"):
         return (f"\n"
                 f"  task run_phase(uvm_phase phase);\n"
-                f"     forever()\n"
+                f"     forever\n"
                 f"       collect_data();  //Create your collect_data function\n"
                 f"  endtask\n")
     elif (component_name == "test"):
@@ -385,7 +394,7 @@ def main():
 
     create_design_directory()
 
-    create_rtl_fiie()
+    create_rtl_fiie(project_name)
 
     os.chdir("..")
 
@@ -412,7 +421,7 @@ def main():
     if(agent_type == "active"):
       create_sequence_file(project_name)
 
-    create_tb_file()
+    create_tb_file(project_name,variables_names)
 
     create_interface_file(variables_names, agent_type)
 
