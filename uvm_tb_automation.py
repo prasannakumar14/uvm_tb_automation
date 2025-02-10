@@ -126,11 +126,11 @@ def create_test_file(project_name):
                 f"{calling_component_build_phase('test',project_name)}"
                 f"\nendclass\n")
         
-        f.write(f"class test1 extends {project_name}_test;\n"
+        f.write("\n"
+                f"class test1 extends {project_name}_test;\n"
                 f"  `uvm_component_utils(test1)\n"
                 f"\n"
                 f"  seq1 seqh1;\n"
-                f"\n"
                 f"{calling_component_function_new('test1')}"
                 f"{calling_component_run_phase("",'test')}"
                 f"\nendclass")
@@ -150,6 +150,7 @@ def create_sequence_file(project_name):
                 f"  task body();\n"
                 f"    repeat(10) begin\n"
                 f"      req = {project_name}_xtn::type_id::create(\"req\");\n"
+                f"\n"
                 f"      start_item(req);\n"
                 f"        req.randomize();\n"
                 f"      finish_item(req);\n"
@@ -338,7 +339,6 @@ def calling_component_run_phase(project_name=None,component_name=None):
                 f"     phase.raise_objection(this);\n"
                 f"       seqh1.start();\n"
                 f"     phase.drop_objection(this);\n"
-                f"\n"
                 f"  endtask\n")
 
 
