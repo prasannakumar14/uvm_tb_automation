@@ -377,15 +377,15 @@ def main():
 
     print()
 
-    print(f"{RED}{BOLD}                         🎯 BOOM!               {RESET}")
+    print("                          BOOM!               ")
 
     print()
 
-    print(f"{YELLOW}{BOLD}🛠️  UVM TB Built! & live! Now, {BLUE}let's find those sneaky bugs before they find us! 🕵️‍♂️ 🔍{RESET}")
+    print("  UVM TB Built! & live! Now, let's find those sneaky bugs before they find us! ")
 
     print()
 
-    print(f"{RED}{BOLD}                         🎯 BOOM!               {RESET}")
+    print("                          BOOM!               ")
 
     print()
 
