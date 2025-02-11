@@ -10,7 +10,7 @@ def create_design_directory():
     os.chdir("design")
 
 def create_rtl_fiie(project_name):
-    with open("rtl.v", "w") as f:
+    with open(f"{project_name}.v", "w") as f:
       f.write(f"module {project_name}();\nendmodule\n")
 
 def create_verification_directory():
@@ -158,7 +158,7 @@ def create_sequence_file(project_name):
                 f"\nendclass")
 
 
-def create_tb_file(project_name,variables_names):
+def create_tb_file(project_name):
         with open("top.sv", "w") as f:
             f.write(f"`include \"pkg.sv\"\n"
                     f"`include \"intf.sv\"\n"
@@ -346,7 +346,7 @@ def calling_component_run_phase(project_name=None,component_name=None):
                 f"     seqh1=seq1::type_id::create(\"seqh1\");\n"
                 f"\n"
                 f"     phase.raise_objection(this);\n"
-                f"       seqh1.start();\n"
+                f"       seqh1.start(envh.agnth.seqrh);\n"
                 f"     phase.drop_objection(this);\n"
                 f"  endtask\n")
 
@@ -421,7 +421,7 @@ def main():
     if(agent_type == "active"):
       create_sequence_file(project_name)
 
-    create_tb_file(project_name,variables_names)
+    create_tb_file(project_name)
 
     create_interface_file(variables_names, agent_type)
 
