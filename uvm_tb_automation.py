@@ -69,7 +69,7 @@ def create_agent_file(project_name,agent_type):
                 f"{calling_component_function_new(project_name,'agent')}"
                 f"{calling_component_build_phase('agent',project_name,agent_type)}")
         if agent_type== "active":
-                f.write(f"{calling_component_connect_phase()}")
+                f.write(f"{calling_component_connect_phase("driver")}")
 
         f.write(f"\nendclass")
 
@@ -93,6 +93,8 @@ def create_monitor_file(project_name):
                 f"\n"
                 f"  virtual intf.mon_mp vif;\n"
                 f"\n"
+                f"  uvm_analysis_port #({project_name}_xtn) monitor_port;"
+                f"\n"
                 f"{calling_component_function_new(project_name,'monitor')}"
                 f"{calling_component_build_phase('monitor',project_name)}"
                 f"{calling_component_run_phase("",'monitor')}"
@@ -111,8 +113,10 @@ def create_env_file(project_name):
                 f"  `uvm_component_utils({project_name}_env)\n"
                 f"\n"
                 f"  {project_name}_agent agnth;\n"
+                f"  {project_name}_scoreboard sb;\n"
                 f"{calling_component_function_new(project_name,'env')}"
                 f"{calling_component_build_phase('env',project_name)}"
+                f"{calling_component_connect_phase("env")}"
                 f"\nendclass")
     
 def create_test_file(project_name):
@@ -156,9 +160,19 @@ def create_sequence_file(project_name):
                 f"    end\n"
                 f"  endtask\n"
                 f"\nendclass")
+        
+def create_scoreboard_file(project_name):
+    with open("scoreboard.sv", "w") as f:
+        f.write(f"class {project_name}_scoreboard extends uvm_scoreboard;\n"
+                f"  `uvm_component_utils({project_name}_scoreboard)\n"
+                f"\n"
+                f"  uvm_tlm_analysis_fifo #({project_name}_xtn) mon_xtn;"
+                f"\n"
+                f"{calling_component_function_new(project_name,'scoreboard')}"
+                f"\nendclass")
 
 
-def create_tb_file(project_name):
+def create_tb_file(project_name,variables_name):
         with open("top.sv", "w") as f:
             f.write(f"`include \"pkg.sv\"\n"
                     f"`include \"intf.sv\"\n"
@@ -173,8 +187,11 @@ def create_tb_file(project_name):
                     f"  always #5 clk = ~clk;\n"
                     f"\n"
                     f"  intf vif(clk);\n"
-                    f"\n"
-                    f" {project_name} dut(.clk(clk),.)\n"
+                    f"\n")
+            f.write(f" {project_name} dut(.clk(clk)")
+            for var_name in variables_name:
+                f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")  
+            f.write(f")\n"
                     f"\n"
                     f"  initial begin\n"
                     f"    uvm_config_db #(virtual intf)::set(null, \"*\", \"intf\", vif);\n"
@@ -202,8 +219,13 @@ def create_interface_file(variables,agent_type):
             
         f.write(f"\n"
                 f"  clocking mon_cb @(posedge clk);\n"
-                f"    //write input output signals\n"
-                f"  endclocking\n"
+                f"    input ")
+        for i, var in enumerate(variables):
+                if i == len(variables) - 1:
+                    f.write(f"{var.split()[1]};\n")
+                else:
+                    f.write(f"{var.split()[1]}, ")
+        f.write(f"  endclocking\n"
                 f"\n")
         
         if(agent_type == "active"):
@@ -234,6 +256,7 @@ def create_package_file(agent_type):
                 f.write(f"  `include \"sequence.sv\"\n")
 
         f.write(f"\n"
+                f"  `include \"scoreboard.sv\"\n"
                 f"  `include \"env.sv\"\n"
                 f"  `include \"test.sv\"\n"
                 f"endpackage\n")
@@ -250,14 +273,20 @@ def create_run_file():
 def calling_component_function_new(project_name,component_name=None):
     if(component_name == None):
         return (f"\n"
-            f"  function new(string name = \"{project_name}\", uvm_component parent);\n"
-            f"     super.new(name,parent);\n"
-            f"  endfunction\n")
+                f"  function new(string name = \"{project_name}\", uvm_component parent);\n"
+                f"     super.new(name,parent);\n"
+                f"  endfunction\n")
+    elif(component_name == "scoreboard"):
+        return(f"  function new(string name = \"{project_name}_{component_name}\", uvm_component parent);\n"
+               f"     super.new(name,parent);\n"
+               f"     mon_xtn=new(\"mon_xtn\",this);\n"
+               f"  endfunction\n")
     else:
         return (f"\n"
-            f"  function new(string name = \"{project_name}_{component_name}\", uvm_component parent);\n"
-            f"     super.new(name,parent);\n"
-            f"  endfunction\n")
+                f"  function new(string name = \"{project_name}_{component_name}\", uvm_component parent);\n"
+                f"     super.new(name,parent);\n"
+                f"     monitor_port=new(\"monitor_port\",this);\n"
+                f"  endfunction\n")
 
 
 def calling_object_function_new(project_name,object_name=None):
@@ -302,12 +331,12 @@ def calling_component_build_phase(class_name,project_name=None, agent_type=None)
     if class_name in ["env"]:
         build_phase_code += (
             f"\n"
-            f"     agnth={project_name}_agent::type_id::create(\"agnth\",this);\n"     
+            f"     agnth={project_name}_agent::type_id::create(\"agnth\",this);\n"
+            f"     sb={project_name}_scoreboard::type_id::create(\"sb\",this);\n"    
         )
 
     if class_name in ["test"]:
         build_phase_code += (
-            f"\n"
             f"     envh={project_name}_env::type_id::create(\"envh\",this);\n"     
         )
 
@@ -315,10 +344,16 @@ def calling_component_build_phase(class_name,project_name=None, agent_type=None)
     return build_phase_code
 
  
-def calling_component_connect_phase():
-    return (f"\n"
+def calling_component_connect_phase(component_name=None):
+    if(component_name == "driver"):
+        return (f"\n"
             f"  function void connect_phase(uvm_phase phase);\n"
             f"     drvh.seq_item_port.connect(seqrh.seq_item_export);\n"
+            f"  endfunction\n")
+    else:
+        return (f"\n"
+            f"  function void connect_phase(uvm_phase phase);\n"
+            f"     agnth.monh.monitor_port.connect(sb.mon_xtn.analysis_export);\n"
             f"  endfunction\n")
 
 
@@ -421,7 +456,9 @@ def main():
     if(agent_type == "active"):
       create_sequence_file(project_name)
 
-    create_tb_file(project_name)
+    create_scoreboard_file(project_name)
+
+    create_tb_file(project_name,variables_names)
 
     create_interface_file(variables_names, agent_type)
 
