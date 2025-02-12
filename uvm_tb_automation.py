@@ -166,9 +166,12 @@ def create_scoreboard_file(project_name):
         f.write(f"class {project_name}_scoreboard extends uvm_scoreboard;\n"
                 f"  `uvm_component_utils({project_name}_scoreboard)\n"
                 f"\n"
-                f"  uvm_tlm_analysis_fifo #({project_name}_xtn) mon_xtn;"
+                f"  uvm_tlm_analysis_fifo #({project_name}_xtn) mon_xtn;\n"
+                f"\n"
+                f"  {project_name}_xtn mon_data;\n"
                 f"\n"
                 f"{calling_component_function_new(project_name,'scoreboard')}"
+                f"{calling_component_run_phase(project_name,'scoreboard')}"
                 f"\nendclass")
 
 
@@ -179,8 +182,8 @@ def create_tb_file(project_name,variables_name):
                     f"`include \"../design/{project_name}.v\"\n"
                     f"\n"
                     f"module top();\n"
-                    f"  import pkg::*;"
-                    f"  import uvm_pkg::*;"
+                    f"  import pkg::*;\n"
+                    f"  import uvm_pkg::*;\n"
                     f"\n"
                     f"  bit clk;\n"
                     f"\n"
@@ -191,7 +194,7 @@ def create_tb_file(project_name,variables_name):
             f.write(f" {project_name} dut(.clk(clk)")
             for var_name in variables_name:
                 f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")  
-            f.write(f")\n"
+            f.write(f");\n"
                     f"\n"
                     f"  initial begin\n"
                     f"    uvm_config_db #(virtual intf)::set(null, \"*\", \"intf\", vif);\n"
@@ -281,11 +284,16 @@ def calling_component_function_new(project_name,component_name=None):
                f"     super.new(name,parent);\n"
                f"     mon_xtn=new(\"mon_xtn\",this);\n"
                f"  endfunction\n")
-    else:
+    elif(component_name == "monitor"):
         return (f"\n"
                 f"  function new(string name = \"{project_name}_{component_name}\", uvm_component parent);\n"
                 f"     super.new(name,parent);\n"
                 f"     monitor_port=new(\"monitor_port\",this);\n"
+                f"  endfunction\n")
+    else:
+        return (f"\n"
+                f"  function new(string name = \"{project_name}_{component_name}\", uvm_component parent);\n"
+                f"     super.new(name,parent);\n"
                 f"  endfunction\n")
 
 
@@ -383,6 +391,13 @@ def calling_component_run_phase(project_name=None,component_name=None):
                 f"     phase.raise_objection(this);\n"
                 f"       seqh1.start(envh.agnth.seqrh);\n"
                 f"     phase.drop_objection(this);\n"
+                f"  endtask\n")
+    elif(component_name == "scoreboard"):
+        return (f"\n"
+                f"  task run_phase(uvm_phase phase);\n"
+                f"     forever begin\n"
+                f"       mon_xtn.get(mon_data);\n"
+                f"     end\n"
                 f"  endtask\n")
 
 
