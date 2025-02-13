@@ -60,16 +60,17 @@ def create_agent_file(project_name,agent_type):
                 f.write(f"\n"
                         f"  {project_name}_driver drvh;\n"
                         f"  {project_name}_monitor monh;\n"
-                        f"  {project_name}_sequencer seqrh;\n")
+                        f"  {project_name}_sequencer seqrh;\n"
+                        f"  {project_name}_coverage covh;\n")
         elif agent_type == "passive":
                 f.write(f"\n"
-                        f"  {project_name}_monitor monh;\n")
+                        f"  {project_name}_monitor monh;\n"
+                        f"  {project_name}_coverage covh;\n")
 
         f.write(f"\n"
                 f"{calling_component_function_new(project_name,'agent')}"
                 f"{calling_component_build_phase('agent',project_name,agent_type)}")
-        if agent_type== "active":
-                f.write(f"{calling_component_connect_phase("driver")}")
+        f.write(f"{calling_component_connect_phase("driver", agent_type)}")
 
         f.write(f"\nendclass")
 
@@ -174,7 +175,28 @@ def create_scoreboard_file(project_name):
                 f"{calling_component_run_phase(project_name,'scoreboard')}"
                 f"\nendclass")
 
-
+def create_covergae_file(project_name):
+    with open("coverage.sv", "w") as f:
+        f.write(f"class {project_name}_coverage extends uvm_subscriber #({project_name}_xtn);\n"
+                f"  `uvm_component_utils({project_name}_coverage)\n"
+                f"\n"
+                f"  {project_name}_xtn cov_data;\n"
+                f"\n"
+                f"  covergroup cg;\n"
+                F"  endgroup\n"
+                f"\n"
+                f"  function new(string name = \"{project_name}_coverage\", uvm_component parent);\n"
+                f"    super.new(name, parent);\n"
+                f"    cg = new();\n"
+                f"  endfunction\n"
+                f"\n"
+                f"  function void write({project_name}_xtn x);\n"
+                f"    $cast(cov_data,x);\n"
+                f"    cg.sample();\n"
+                f"  endfunction\n"
+                f"\n"
+                f"endclass")
+        
 def create_tb_file(project_name,variables_name):
         with open("top.sv", "w") as f:
             f.write(f"`include \"pkg.sv\"\n"
@@ -252,6 +274,8 @@ def create_package_file(agent_type):
 
         if(agent_type == "active"):
                 f.write(f"  `include \"sequencer.sv\"\n")
+            
+        f.write(f"  `include \"coverage.sv\"\n")
 
         f.write(f"  `include \"agent.sv\"\n")
 
@@ -268,7 +292,7 @@ def create_package_file(agent_type):
 def create_run_file():
     with open("run.do", "w") as f:
         f.write(f"vlog top.sv \n"
-                f"vsim -novopt -suppress 12110 top\n"
+                f"vsim -novopt -suppress 12110 top -assertdebug -coverage\n"
                 f"add wave -position insertpoint sim:/top/vif/*\n"
                 f"run -all\n")
 
@@ -327,7 +351,8 @@ def calling_component_build_phase(class_name,project_name=None, agent_type=None)
     if class_name in ["agent"]:
         build_phase_code += (
             f"\n"
-            f"     monh={project_name}_monitor::type_id::create(\"monh\",this);\n"     
+            f"     monh={project_name}_monitor::type_id::create(\"monh\",this);\n"
+            f"     covh={project_name}_coverage::type_id::create(\"covh\",this);\n"     
         )
 
     if agent_type == "active":
@@ -352,11 +377,17 @@ def calling_component_build_phase(class_name,project_name=None, agent_type=None)
     return build_phase_code
 
  
-def calling_component_connect_phase(component_name=None):
-    if(component_name == "driver"):
+def calling_component_connect_phase(component_name=None,agent_type=None):
+    if(component_name == "driver" and agent_type == "active"):
         return (f"\n"
             f"  function void connect_phase(uvm_phase phase);\n"
             f"     drvh.seq_item_port.connect(seqrh.seq_item_export);\n"
+            f"     monh.monitor_port.connect(covh.analysis_export);\n"
+            f"  endfunction\n")
+    elif(component_name == "driver"):
+        return (f"\n"
+            f"  function void connect_phase(uvm_phase phase);\n"
+            f"     monh.monitor_port.connect(covh.analysis_export);\n"
             f"  endfunction\n")
     else:
         return (f"\n"
@@ -472,6 +503,8 @@ def main():
       create_sequence_file(project_name)
 
     create_scoreboard_file(project_name)
+
+    create_covergae_file(project_name)
 
     create_tb_file(project_name,variables_names)
 
