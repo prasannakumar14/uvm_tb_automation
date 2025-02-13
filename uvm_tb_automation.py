@@ -29,7 +29,7 @@ def create_transaction_file(project_name):
                 variables.append(var_name)
                 break
             else:
-                print("Invalid input! Please enter a valid variable name (e.g., 'bit clk' or 'bit[31:0] addr' or 'int addr' or 'logic[31:0] addr' or 'byte ready').")
+                print(f"\n {"\033[36m"}Invalid input! Please enter a valid variable name (e.g., 'bit clk' or 'bit[31:0] addr' or 'int addr' or 'logic[31:0] addr' or 'byte ready').{"\033[0m"}\n")
 
     with open("xtn.sv", "w") as f:
         f.write(f"class {project_name}_xtn extends uvm_sequence_item;\n"
@@ -439,7 +439,7 @@ def get_project_name():
         if re.match(r"^[a-zA-Z_]+$", project_name):
             return project_name.lower()
         else:
-            print("Invalid input! Please enter a valid project name (letters and underscores only).")
+            print(f"\n {"\033[36m"}Invalid input! Please enter a valid project name (letters and underscores only).{"\033[0m"}\n")
 
 def get_number_of_variables():
     while True:
@@ -448,7 +448,7 @@ def get_number_of_variables():
         if project_number.isdigit():  
             return int(project_number)  
         else:
-            print("Invalid input! Please enter a valid number (digits only).")
+            print(f"\n {"\033[36m"}Invalid input! Please enter a valid number (digits only).{"\033[0m"}\n")
 
 def get_agent_type():
     while True:
@@ -456,7 +456,7 @@ def get_agent_type():
         if agent_type in ["active", "passive"]:
             return agent_type.lower()
         else:
-            print("Invalid input! Please enter 'active' or 'passive'.")
+            print(f"\n {"\033[36m"}Invalid input! Please enter 'active' or 'passive'.{"\033[0m"}\n")
 
 def main():
     RED = "\033[91m"
