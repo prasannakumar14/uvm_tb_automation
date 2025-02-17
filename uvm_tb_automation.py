@@ -17,6 +17,13 @@ def create_verification_directory():
     os.makedirs("tb", exist_ok=True)
     os.chdir("tb")
 
+def get_clock():
+    while True:
+        clock = input("Is clock required? (yes/no): ").strip().lower()
+        if clock in ["yes", "no"]:
+            return clock
+        else:
+            print(f"\n {"\033[36m"}Invalid input! Please enter 'yes' or 'no'.{"\033[0m"}\n")
 
 def create_transaction_file(project_name):
     num_vars = get_number_of_variables()
@@ -75,30 +82,44 @@ def create_agent_file(project_name,agent_type):
         f.write(f"\nendclass")
 
 
-def create_driver_file(project_name):
+def create_driver_file(project_name,clock_is_required):
     with open("driver.sv", "w") as f:
         f.write(f"class {project_name}_driver extends uvm_driver #({project_name}_xtn);\n"
                 f"  `uvm_component_utils({project_name}_driver)\n"
-                f"\n"
-                f"  virtual intf.drv_mp vif;\n"
-                f"\n"
+                f"\n")
+        if clock_is_required == "yes":
+            f.write(f"  virtual intf.drv_mp vif;\n")
+        else:
+            f.write(f"  virtual intf vif;\n")
+
+        f.write(f"\n"
                 f"{calling_component_function_new(project_name,'driver')}"
                 f"{calling_component_build_phase('driver',project_name)}"
                 f"{calling_component_run_phase(project_name,'driver')}"
                 f"\nendclass")
         
-def create_monitor_file(project_name):
+def create_monitor_file(project_name,clock_is_required):
     with open("monitor.sv", "w") as f:
         f.write(f"class {project_name}_monitor extends uvm_monitor;\n"
                 f"  `uvm_component_utils({project_name}_monitor)\n"
-                f"\n"
-                f"  virtual intf.mon_mp vif;\n"
-                f"\n"
+                f"\n")
+        if clock_is_required == "yes":
+            f.write(f"  virtual intf.mon_mp vif;\n")
+        else:
+            f.write(f"  virtual intf vif;\n")
+        f.write(f"\n"
                 f"  uvm_analysis_port #({project_name}_xtn) monitor_port;"
                 f"\n"
                 f"{calling_component_function_new(project_name,'monitor')}"
                 f"{calling_component_build_phase('monitor',project_name)}"
                 f"{calling_component_run_phase("",'monitor')}"
+                f"\n"
+                f"  task collect_data();\n"
+                f"    {project_name}_xtn x={project_name}_xtn::type_id::create(\"x\");\n"
+                f"\n"
+                f"    monitor_port.write(x);\n"
+                f"  endtask\n"
+                f"\n"
                 f"\nendclass")
         
 def create_sequencer_file(project_name):
@@ -190,14 +211,14 @@ def create_covergae_file(project_name):
                 f"    cg = new();\n"
                 f"  endfunction\n"
                 f"\n"
-                f"  function void write({project_name}_xtn x);\n"
-                f"    $cast(cov_data,x);\n"
+                f"  function void write({project_name}_xtn t);\n"
+                f"    $cast(cov_data,t);\n"
                 f"    cg.sample();\n"
                 f"  endfunction\n"
                 f"\n"
                 f"endclass")
         
-def create_tb_file(project_name,variables_name):
+def create_tb_file(project_name,variables_name,clock_is_required):
         with open("top.sv", "w") as f:
             f.write(f"`include \"pkg.sv\"\n"
                     f"`include \"intf.sv\"\n"
@@ -206,16 +227,30 @@ def create_tb_file(project_name,variables_name):
                     f"module top();\n"
                     f"  import pkg::*;\n"
                     f"  import uvm_pkg::*;\n"
-                    f"\n"
-                    f"  bit clk;\n"
+                    f"\n")
+            if clock_is_required == "yes":
+                f.write(f"  bit clk;\n"
                     f"\n"
                     f"  always #5 clk = ~clk;\n"
                     f"\n"
                     f"  intf vif(clk);\n"
-                    f"\n")
-            f.write(f" {project_name} dut(.clk(clk)")
-            for var_name in variables_name:
-                f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")  
+                    f"\n"
+                    f" {project_name} dut(.clk(clk)")
+            else:
+                f.write(f"  intf vif();\n"
+                    f"\n"
+                    f"  {project_name} dut(")
+                
+            if clock_is_required == "yes":
+                for var_name in variables_name:
+                   f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")  
+            else:
+                for i, var_name in enumerate(variables_name):
+                    if i == 0:
+                        f.write(f".{var_name.split()[1]}(vif.{var_name.split()[1]})")
+                    else:                   
+                        f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")
+
             f.write(f");\n"
                     f"\n"
                     f"  initial begin\n"
@@ -228,37 +263,41 @@ def create_tb_file(project_name,variables_name):
                     f"endmodule\n")
 
 
-def create_interface_file(variables,agent_type):
+def create_interface_file(variables,agent_type,clock_is_required):
     with open("intf.sv", "w") as f:
-        f.write(f"interface intf(input bit clk);\n")
+        if clock_is_required == "yes":
+          f.write(f"interface intf(input bit clk);\n")
+        else:
+          f.write(f"interface intf();\n")
                 
         for var in variables:
             f.write(f"  logic {var.replace('bit', '').strip()};\n")
         
-        if(agent_type == "active"):
+        if clock_is_required == "yes":
+            if(agent_type == "active"):
+                f.write(f"\n"
+                    f"  clocking drv_cb @(posedge clk);\n"
+                    f"    //write input output signals\n"
+                    f"  endclocking\n"
+                    f"\n")
+                
             f.write(f"\n"
-                f"  clocking drv_cb @(posedge clk);\n"
-                f"    //write input output signals\n"
-                f"  endclocking\n"
-                f"\n")
+                    f"  clocking mon_cb @(posedge clk);\n"
+                    f"    input ")
+            for i, var in enumerate(variables):
+                    if i == len(variables) - 1:
+                        f.write(f"{var.split()[1]};\n")
+                    else:
+                        f.write(f"{var.split()[1]}, ")
+            f.write(f"  endclocking\n"
+                    f"\n")
             
-        f.write(f"\n"
-                f"  clocking mon_cb @(posedge clk);\n"
-                f"    input ")
-        for i, var in enumerate(variables):
-                if i == len(variables) - 1:
-                    f.write(f"{var.split()[1]};\n")
-                else:
-                    f.write(f"{var.split()[1]}, ")
-        f.write(f"  endclocking\n"
-                f"\n")
-        
-        if(agent_type == "active"):
-                f.write(f"  modport drv_mp(clocking drv_cb);\n")
+            if(agent_type == "active"):
+                    f.write(f"  modport drv_mp(clocking drv_cb);\n")
 
-        f.write(f"  modport mon_mp(clocking mon_cb);\n"
-                f"\n"
-                f"endinterface\n")
+            f.write(f"  modport mon_mp(clocking mon_cb);\n"
+                    f"\n")
+        f.write(f"endinterface\n")
         
 def create_package_file(agent_type):
     with open("pkg.sv", "w") as f:
@@ -481,6 +520,8 @@ def main():
 
     create_verification_directory()
 
+    clock_is_required = get_clock()
+
     variables_names=create_transaction_file(project_name)
 
     agent_type = get_agent_type()
@@ -488,9 +529,9 @@ def main():
     create_agent_file(project_name, agent_type)
   
     if(agent_type == "active"):
-       create_driver_file(project_name)
+       create_driver_file(project_name,clock_is_required)
     
-    create_monitor_file(project_name)
+    create_monitor_file(project_name,clock_is_required)
 
     if(agent_type == "active"):
       create_sequencer_file(project_name)
@@ -506,9 +547,9 @@ def main():
 
     create_covergae_file(project_name)
 
-    create_tb_file(project_name,variables_names)
+    create_tb_file(project_name,variables_names,clock_is_required)
 
-    create_interface_file(variables_names, agent_type)
+    create_interface_file(variables_names, agent_type,clock_is_required)
 
     create_package_file(agent_type)
 
