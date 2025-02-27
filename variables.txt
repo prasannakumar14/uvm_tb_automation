@@ -1,0 +1,5 @@
+input bit rst
+input bit psel
+input bit[31:0] paddr
+output bit[31:0] prdata
+output bit ready

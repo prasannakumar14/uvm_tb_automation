@@ -25,31 +25,47 @@ def get_clock():
         else:
             print(f"\n {"\033[36m"}Invalid input! Please enter 'yes' or 'no'.{"\033[0m"}\n")
 
-def create_transaction_file(project_name):
-    num_vars = get_number_of_variables()
+def create_transaction_file(project_name,path):
+   # num_vars = get_number_of_variables()
 
     variables = []
-    for i in range(num_vars):
-        while True:
-            var_name = input(f"Enter variable {i+1} name (EX: bit clk/bit[31:0] addr/int addr/byte ready): ").strip()
-            if re.match(r"(bit|byte|int|logic)(\[\d+:\d+\])? [a-zA-Z_]+", var_name) and not re.search(r"[;@%:,$]", var_name.split()[1]):
+    # for i in range(num_vars):
+    #     while True:
+    #         var_name = input(f"Enter variable {i+1} name (EX: bit clk/bit[31:0] addr/int addr/byte ready): ").strip()
+    #         if re.match(r"(bit|byte|int|logic)(\[\d+:\d+\])? [a-zA-Z_]+", var_name) and not re.search(r"[;@%:,$/()\^!]", var_name.split()[1]):
+    #             variables.append(var_name)
+    #             break
+    #         else:
+    #             print(f"\n {"\033[36m"}Invalid input! Please enter a valid variable name (e.g., 'bit clk' or 'bit[31:0] addr' or 'int addr' or 'logic[31:0] addr' or 'byte ready').{"\033[0m"}\n")
+
+    with open(path, "r") as file:
+               
+        for line in file:
+            var_name = line.strip()
+            if re.match(r"(input|output) (bit|byte|int|logic)(\[\d+:\d+\])? [a-zA-Z_]+$", var_name) and not re.search(r"[;@%:,$/()\^!]", var_name.split()[2]):
                 variables.append(var_name)
-                break
             else:
-                print(f"\n {"\033[36m"}Invalid input! Please enter a valid variable name (e.g., 'bit clk' or 'bit[31:0] addr' or 'int addr' or 'logic[31:0] addr' or 'byte ready').{"\033[0m"}\n")
+                print(f"\n\033[36mInvalid variable format in file: {var_name}\033[0m\n")
 
     with open("xtn.sv", "w") as f:
         f.write(f"class {project_name}_xtn extends uvm_sequence_item;\n"
                 f"\n")
         
         for var_name in variables:
-            f.write(f"  rand {var_name};\n")
+            parts = var_name.split()
+            direction = parts[0]
+            var_type = " ".join(parts[1:])
+            if direction == "input":
+                f.write(f"  rand {var_type};\n")
+            else:
+                f.write(f"  {var_type};\n")
 
         f.write(f"\n"
                 f"  `uvm_object_utils_begin({project_name}_xtn)\n")
 
-        for var_name in variables:
-            f.write(f"   `uvm_field_int({var_name.split(" ")[1]}, UVM_ALL_ON)\n")
+        for var_name in variables:   
+            f.write(f"   `uvm_field_int({var_name.split()[2]}, UVM_ALL_ON)\n")
+           
         
         f.write(f"  `uvm_object_utils_end\n"
                 f"{calling_object_function_new(project_name,'xtn')}")
@@ -243,13 +259,13 @@ def create_tb_file(project_name,variables_name,clock_is_required):
                 
             if clock_is_required == "yes":
                 for var_name in variables_name:
-                   f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")  
+                   f.write(f",.{var_name.split()[2]}(vif.{var_name.split()[2]})")  
             else:
                 for i, var_name in enumerate(variables_name):
                     if i == 0:
-                        f.write(f".{var_name.split()[1]}(vif.{var_name.split()[1]})")
+                        f.write(f".{var_name.split()[2]}(vif.{var_name.split()[2]})")
                     else:                   
-                        f.write(f",.{var_name.split()[1]}(vif.{var_name.split()[1]})")
+                        f.write(f",.{var_name.split()[2]}(vif.{var_name.split()[2]})")
 
             f.write(f");\n"
                     f"\n"
@@ -271,7 +287,9 @@ def create_interface_file(variables,agent_type,clock_is_required):
           f.write(f"interface intf();\n")
                 
         for var in variables:
-            f.write(f"  logic {var.replace('bit', '').strip()};\n")
+          parts = var.split()
+          var_type = " ".join(parts[1:])  # Remove the 'input' or 'output' prefix
+          f.write(f"  logic {var_type.replace('bit', '').strip()};\n")
         
         if clock_is_required == "yes":
             if(agent_type == "active"):
@@ -286,9 +304,9 @@ def create_interface_file(variables,agent_type,clock_is_required):
                     f"    input ")
             for i, var in enumerate(variables):
                     if i == len(variables) - 1:
-                        f.write(f"{var.split()[1]};\n")
+                        f.write(f"{var.split()[2]};\n")
                     else:
-                        f.write(f"{var.split()[1]}, ")
+                        f.write(f"{var.split()[2]}, ")
             f.write(f"  endclocking\n"
                     f"\n")
             
@@ -522,7 +540,9 @@ def main():
 
     clock_is_required = get_clock()
 
-    variables_names=create_transaction_file(project_name)
+    variables_file_path = "d:/prasanna/Python/variables.txt"
+    
+    variables_names=create_transaction_file(project_name, variables_file_path)
 
     agent_type = get_agent_type()
   
