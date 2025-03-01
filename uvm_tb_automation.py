@@ -114,7 +114,7 @@ def create_driver_file(project_name,clock_is_required):
                 f"{calling_component_run_phase(project_name,'driver')}"
                 f"\nendclass")
         
-def create_monitor_file(project_name,clock_is_required):
+def create_monitor_file(project_name,clock_is_required,var_names):
     with open("monitor.sv", "w") as f:
         f.write(f"class {project_name}_monitor extends uvm_monitor;\n"
                 f"  `uvm_component_utils({project_name}_monitor)\n"
@@ -132,7 +132,15 @@ def create_monitor_file(project_name,clock_is_required):
                 f"\n"
                 f"  task collect_data();\n"
                 f"    {project_name}_xtn x={project_name}_xtn::type_id::create(\"x\");\n"
-                f"\n"
+                f"\n")
+        if(clock_is_required == "yes"):
+            f.write(f"    @(vif.mon_cb)\n")
+            for var_name in var_names:
+                f.write(f"      x.{var_name.split()[2]}=vif.mon_cb.{var_name.split()[2]};\n")
+        else:
+            for var_name in var_names:
+                f.write(f"      x.{var_name.split()[2]}=vif.{var_name.split()[2]};\n")
+        f.write(f"\n"
                 f"    monitor_port.write(x);\n"
                 f"  endtask\n"
                 f"\n"
@@ -279,7 +287,9 @@ def create_tb_file(project_name,variables_name,clock_is_required):
                     f"endmodule\n")
 
 
-def create_interface_file(variables,agent_type,clock_is_required):
+def create_interface_file(variables,agent_type,clock_is_required,in_var,out_var):
+    i = 0
+    o = 0
     with open("intf.sv", "w") as f:
         if clock_is_required == "yes":
           f.write(f"interface intf(input bit clk);\n")
@@ -295,8 +305,25 @@ def create_interface_file(variables,agent_type,clock_is_required):
             if(agent_type == "active"):
                 f.write(f"\n"
                     f"  clocking drv_cb @(posedge clk);\n"
-                    f"    //write input output signals\n"
-                    f"  endclocking\n"
+                    f"    output ")
+            for var in variables:
+                if(i == in_var-1):
+                    if(var.split()[0] == "input"):
+                        f.write(f"{var.split()[2]};\n")
+                else:
+                    if(var.split()[0] == "input"):
+                        f.write(f"{var.split()[2]}, ")
+                        i+=1
+            f.write(f"    input ")
+            for var in variables:
+                if(o == out_var-1):
+                    if(var.split()[0] == "output"):
+                        f.write(f"{var.split()[2]};\n")
+                else:
+                    if(var.split()[0] == "output"):
+                        f.write(f"{var.split()[2]}, ")
+                        o+=1
+            f.write(f"  endclocking\n"
                     f"\n")
                 
             f.write(f"\n"
@@ -507,6 +534,12 @@ def get_number_of_variables():
         else:
             print(f"\n {"\033[36m"}Invalid input! Please enter a valid number (digits only).{"\033[0m"}\n")
 
+def count_input_variables(variables):
+    return sum(1 for var in variables if var.startswith("input"))
+
+def count_output_variables(variables):
+    return sum(1 for var in variables if var.startswith("output"))
+
 def get_agent_type():
     while True:
         agent_type = input("Enter agent type (active/passive): ").strip().lower()
@@ -540,9 +573,18 @@ def main():
 
     clock_is_required = get_clock()
 
-    variables_file_path = "d:/prasanna/Python/variables.txt"
+    #  # Get the directory of the current script
+    script_dir = os.path.dirname(__file__)
+    # # Construct the path to variables.txt relative to the script directory
+    variables_file_path = os.path.join(script_dir, "variables.txt")
+
+   # variables_file_path = "d:/prasanna/Python/variables.txt"
     
     variables_names=create_transaction_file(project_name, variables_file_path)
+
+    num_input_variables = count_input_variables(variables_names)
+    
+    num_output_variables = count_output_variables(variables_names)
 
     agent_type = get_agent_type()
   
@@ -551,7 +593,7 @@ def main():
     if(agent_type == "active"):
        create_driver_file(project_name,clock_is_required)
     
-    create_monitor_file(project_name,clock_is_required)
+    create_monitor_file(project_name,clock_is_required,variables_names)
 
     if(agent_type == "active"):
       create_sequencer_file(project_name)
@@ -569,7 +611,7 @@ def main():
 
     create_tb_file(project_name,variables_names,clock_is_required)
 
-    create_interface_file(variables_names, agent_type,clock_is_required)
+    create_interface_file(variables_names, agent_type,clock_is_required,num_input_variables,num_output_variables)
 
     create_package_file(agent_type)
 
